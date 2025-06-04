@@ -1,12 +1,13 @@
 "use client";
 
+import Image, { StaticImageData } from "next/image";
 import { FlickeringGrid } from "@/components/magicui/flickering-grid";
+import { AnimatedCircularProgressBar } from "@/components/magicui/animated-circular-progress-bar";
+import { AuroraText } from "@/components/magicui/aurora-text";
 import { DotPattern } from "@/components/magicui/dot-pattern";
 import { useState, useEffect, useCallback } from "react";
 import { VelocityScroll } from "@/components/magicui/scroll-based-velocity";
-import Image, { StaticImageData } from "next/image"; // Imported StaticImageData
 import { AnimatedList } from "@/components/magicui/animated-list";
-import { AuroraText } from "@/components/magicui/aurora-text";
 import { SparklesText } from "@/components/magicui/sparkles-text";
 import { MorphingText } from "@/components/magicui/morphing-text";
 import { HyperText } from "@/components/magicui/hyper-text";
@@ -59,10 +60,11 @@ interface ProjectCardProps {
   tags: string[];
   link?: string;
   linkText?: string;
-  imageUrls: StaticImageData[]; // Changed from string[] to StaticImageData[]
+  imageUrls: StaticImageData[];
+  fullDescription?: string;
 }
 
-function ProjectCard({ delay, title, description, tags, link, linkText, imageUrls }: ProjectCardProps) {
+function ProjectCard({ delay, title, description, tags, link, linkText, imageUrls, fullDescription }: ProjectCardProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [drawerLoading, setDrawerLoading] = useState(true);
 
@@ -71,21 +73,18 @@ function ProjectCard({ delay, title, description, tags, link, linkText, imageUrl
       setIsLoading(false);
     }, 1000);
 
-    // Simulate drawer image loading delay for demonstration if needed,
-    // but actual loading is handled by onLoadingComplete
     const drawerTimer = setTimeout(() => {
-        if (imageUrls.length === 0) { // If no images, stop drawer loading immediately
-            setDrawerLoading(false);
-        }
-    }, 500); // Adjust if a slight delay is desired before images might load
+      if (imageUrls.length === 0) {
+        setDrawerLoading(false);
+      }
+    }, 500);
 
     return () => {
-        clearTimeout(timer);
-        clearTimeout(drawerTimer);
-    }
+      clearTimeout(timer);
+      clearTimeout(drawerTimer);
+    };
   }, [imageUrls.length]);
 
-  // Handles completion of all images in the drawer
   const [loadedImagesCount, setLoadedImagesCount] = useState(0);
   useEffect(() => {
     if (imageUrls.length > 0 && loadedImagesCount === imageUrls.length) {
@@ -94,19 +93,19 @@ function ProjectCard({ delay, title, description, tags, link, linkText, imageUrl
   }, [loadedImagesCount, imageUrls.length]);
 
   const handleImageLoad = () => {
-    setLoadedImagesCount(prevCount => prevCount + 1);
+    setLoadedImagesCount((prevCount) => prevCount + 1);
   };
-
 
   return (
     <BlurFade delay={delay}>
-      <Drawer onOpenChange={(open) => {
-        // Reset drawer loading state when drawer is opened or closed
-        if (open) {
-          setDrawerLoading(true);
-          setLoadedImagesCount(0); // Reset count when opening
-        }
-      }}>
+      <Drawer
+        onOpenChange={(open) => {
+          if (open) {
+            setDrawerLoading(true);
+            setLoadedImagesCount(0);
+          }
+        }}
+      >
         <DrawerTrigger className="text-left w-full">
           <div className="border rounded-lg p-4 hover:shadow-md transition-shadow h-full flex flex-col">
             {isLoading ? (
@@ -125,7 +124,7 @@ function ProjectCard({ delay, title, description, tags, link, linkText, imageUrl
                 {imageUrls[0] && (
                   <div className="relative w-full h-[125px] mb-3">
                     <Image
-                      src={imageUrls[0]} // Accepts StaticImageData
+                      src={imageUrls[0]}
                       alt={`${title} preview`}
                       fill
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -133,7 +132,7 @@ function ProjectCard({ delay, title, description, tags, link, linkText, imageUrl
                     />
                   </div>
                 )}
-                <h3 className="font-semibold">{title}</h3>
+                <h3 className="font-semibold"><AuroraText>{title}</AuroraText></h3>
                 <p className="text-sm text-muted-foreground flex-grow">{description}</p>
                 <div className="mt-2 flex flex-wrap gap-1">
                   {tags.map((tag, index) => (
@@ -146,35 +145,43 @@ function ProjectCard({ delay, title, description, tags, link, linkText, imageUrl
         </DrawerTrigger>
         <DrawerContent className="max-h-[90vh]">
           <DrawerHeader>
-            <DrawerTitle>{title}</DrawerTitle>
+            <DrawerTitle><AuroraText>{title}</AuroraText></DrawerTitle>
             <DrawerDescription>{description}</DrawerDescription>
           </DrawerHeader>
           <div className="px-4 overflow-y-auto">
-            {drawerLoading && imageUrls.length > 0 && ( // Only show skeleton if there are images to load
-              <div className="space-y-4">
-                {imageUrls.map((_, index) => (
-                  <Skeleton key={index} className="h-48 w-full rounded-lg" />
-                ))}
+            {imageUrls.length > 0 ? (
+              <>
+                {drawerLoading && (
+                  <div className="space-y-4">
+                    {imageUrls.map((_, index) => (
+                      <Skeleton key={index} className="h-48 w-full rounded-lg" />
+                    ))}
+                  </div>
+                )}
+                <div className={`flex flex-col gap-4 ${drawerLoading ? "hidden" : "block"}`}>
+                  {imageUrls.map((imageUrl, index) => (
+                    <div key={index} className="w-full relative aspect-[4/3] max-h-[400px]">
+                      <Image
+                        src={imageUrl}
+                        alt={`${title} image ${index + 1}`}
+                        fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 800px"
+                        className="rounded-lg object-contain"
+                        onLoad={handleImageLoad}
+                        onError={() => {
+                          console.error(`Error loading image: ${imageUrl}`);
+                          handleImageLoad();
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="prose max-w-full text-pretty font-sans text-sm sm:text-base text-muted-foreground dark:prose-invert">
+                <Markdown>{fullDescription || description}</Markdown>
               </div>
             )}
-            <div className={`flex flex-col gap-4 ${drawerLoading && imageUrls.length > 0 ? "hidden" : "block"}`}>
-              {imageUrls.map((imageUrl, index) => (
-                <div key={index} className="w-full relative aspect-[4/3] max-h-[400px]"> {/* Added aspect ratio for consistent image display */}
-                  <Image
-                    src={imageUrl} // Accepts StaticImageData
-                    alt={`${title} image ${index + 1}`}
-                    fill
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 800px"
-                    className="rounded-lg object-contain"
-                    onLoad={handleImageLoad} // Changed from onLoadingComplete for individual tracking
-                    onError={() => { // Handle image loading errors
-                        console.error(`Error loading image: ${imageUrl}`);
-                        handleImageLoad(); // Still count it as "loaded" to prevent infinite loading state
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
           </div>
           <DrawerFooter>
             {link && (
@@ -196,26 +203,26 @@ function ProjectCard({ delay, title, description, tags, link, linkText, imageUrl
 
 export default function Page() {
   return (
-    <main className="flex flex-col min-h-[100dvh] space-y-10 px-4 md:px-8 lg:px-16 py-8"> {/* Added padding for better layout */}
+    <main className="flex flex-col min-h-[100dvh] space-y-10 px-4 md:px-8 lg:px-12 py-8">
       {/* Hero Section */}
       <section id="hero" className="w-full">
         <div className="mx-auto w-full max-w-2xl space-y-8">
-          <div className="gap-2 flex justify-between items-start"> {/* Adjusted alignment */}
+          <div className="gap-2 flex justify-between items-start">
             <div className="flex-col flex flex-1 space-y-1.5">
-              <BlurFade delay={BLUR_FADE_DELAY}>
-                <MorphingText
-                  texts={["Hi, I'm Amirabbas", "Hi, I'm ixi_flower"]}
-                  className="text-3xl font-bold tracking-tighter sm:text-4xl xl:text-5xl/none" // Adjusted sizes
-                />
-              </BlurFade>
               <BlurFadeText
-                className="max-w-[400px] text-sm sm:text-base md:text-lg text-muted-foreground" // Adjusted sizes and added text-muted-foreground
-                delay={BLUR_FADE_DELAY + 0.05} // Slight stagger
+                delay={BLUR_FADE_DELAY}
+                className="text-3xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none"
+                yOffset={8}
+                text={`Hi, I'm ${DATA.name.split(" ")[0]} 👋`}
+              />
+              <BlurFadeText
+                className="max-w-[600px] md:text-xl"
+                delay={BLUR_FADE_DELAY}
                 text={DATA.description}
               />
             </div>
             <BlurFade delay={BLUR_FADE_DELAY}>
-              <Avatar className="size-24 sm:size-28 border"> {/* Responsive avatar size */}
+              <Avatar className="size-24 sm:size-28 border">
                 <AvatarImage alt={DATA.name} src={DATA.avatarUrl} />
                 <AvatarFallback>{DATA.initials}</AvatarFallback>
               </Avatar>
@@ -225,36 +232,22 @@ export default function Page() {
       </section>
 
       {/* About Section */}
-      <section id="about" className="w-full max-w-3xl mx-auto"> {/* Centered and max-width */}
+      <section id="about" className="w-full max-w-3xl mx-auto">
         <BlurFade delay={BLUR_FADE_DELAY * 3}>
-          <SparklesText className="text-2xl sm:text-3xl font-semibold mb-4">About</SparklesText> {/* Adjusted size and margin */}
+          <SparklesText className="text-2xl sm:text-3xl font-semibold mb-4"><AuroraText>About</AuroraText></SparklesText>
         </BlurFade>
         <BlurFade delay={BLUR_FADE_DELAY * 4}>
           <Markdown className="prose max-w-full text-pretty font-sans text-sm sm:text-base text-muted-foreground dark:prose-invert">
             {DATA.summary}
           </Markdown>
         </BlurFade>
-        <BlurFade delay={BLUR_FADE_DELAY * 4.1}>
-          <div className="mt-6"> {/* Increased margin */}
-            <InteractiveHoverButton>
-              <a
-                href="https://www.udemy.com/certificate/UC-9842c80b-e377-4960-b027-83a31256595d/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2" // Adjusted padding
-              >
-                View Python Udemy Certificate
-              </a>
-            </InteractiveHoverButton>
-          </div>
-        </BlurFade>
       </section>
 
       {/* Work Experience Section */}
-      <section id="work" className="w-full max-w-3xl mx-auto"> {/* Centered and max-width */}
-        <div className="flex min-h-0 flex-col gap-y-4"> {/* Increased gap */}
+      <section id="work" className="w-full max-w-3xl mx-auto">
+        <div className="flex min-h-0 flex-col gap-y-4">
           <BlurFade delay={BLUR_FADE_DELAY * 5}>
-            <SparklesText className="text-2xl sm:text-3xl font-semibold mb-4">Work Experience</SparklesText> {/* Adjusted size and margin */}
+            <SparklesText className="text-2xl sm:text-3xl font-semibold mb-4"><AuroraText>Work Experience</AuroraText></SparklesText>
           </BlurFade>
           {DATA.work.map((work, id) => (
             <BlurFade key={work.company} delay={BLUR_FADE_DELAY * 6 + id * 0.05}>
@@ -273,49 +266,92 @@ export default function Page() {
         </div>
       </section>
 
-{/* Education Section */}
-<section id="education">
-  <div className="flex min-h-0 flex-col gap-y-3">
-    <BlurFade delay={BLUR_FADE_DELAY * 7}>
-      <SparklesText className="text-2xl">Education - Courses</SparklesText>
-    </BlurFade>
-    {DATA.education
-      // Modify this line to use an explicit type guard
-      ?.filter(
-        (edu): edu is Exclude<typeof DATA.education[number], null | undefined> => Boolean(edu)
-      )
-      .map((education, id) => (
-        // Now, 'education' within this map is guaranteed to be non-nullable
-        <BlurFade key={education.school} delay={BLUR_FADE_DELAY * 8 + id * 0.05}>
-          <ResumeCard
-            href={education.href ?? undefined}
-            logoUrl={education.logoUrl}
-            altText={education.school}
-            title={education.school}
-            subtitle={education.degree}
-            period={`${education.start} - ${education.end}`}
-          />
-        </BlurFade>
-      ))}
-  </div>
-</section>
       {/* Skills Section */}
-      <section id="skills" className="w-full max-w-3xl mx-auto"> {/* Centered and max-width */}
+      <section id="skills">
         <div className="flex min-h-0 flex-col gap-y-3">
           <BlurFade delay={BLUR_FADE_DELAY * 9}>
-            <SparklesText className="text-2xl sm:text-3xl font-semibold mb-4">Skills</SparklesText> {/* Adjusted size and margin */}
+            <h2 className="text-xl font-bold"><AuroraText>Skills</AuroraText></h2>
           </BlurFade>
-          <div className="flex flex-wrap gap-2"> {/* Increased gap */}
+          <div className="flex flex-wrap gap-1">
             {DATA.skills.map((skill, id) => (
               <BlurFade key={skill} delay={BLUR_FADE_DELAY * 10 + id * 0.05}>
-                <Badge variant="secondary" className="text-sm px-3 py-1">{skill}</Badge> {/* Styled badge */}
+                <Badge key={skill}>{skill}</Badge>
               </BlurFade>
             ))}
           </div>
-          <div className="mt-4"> {/* Added margin for VelocityScroll */}
-            <VelocityScroll defaultVelocity={1} className="font-semibold text-muted-foreground"> {/* Changed to number, added styling */}
-              Linux • Python • React • Node.js • React Native • Django • SQL • Docker • Kubernetes • HTML/CSS • SEC
-            </VelocityScroll>
+          <div className="grid grid-cols-2 gap-4 mt-4 sm:grid-cols-3">
+            <BlurFade delay={BLUR_FADE_DELAY * 10}>
+              <div className="flex flex-col items-center">
+                <AnimatedCircularProgressBar
+                  min={0} // Added min prop
+                  max={100}
+                  value={80}
+                  gaugePrimaryColor="rgb(79, 70, 229)"
+                  gaugeSecondaryColor="rgba(79, 70, 229, 0.2)"
+                />
+                <p className="mt-2 text-sm font-medium">Python Programming</p>
+              </div>
+            </BlurFade>
+            <BlurFade delay={BLUR_FADE_DELAY * 10.1}>
+              <div className="flex flex-col items-center">
+                <AnimatedCircularProgressBar
+                  min={0} // Added min prop
+                  max={100}
+                  value={100}
+                  gaugePrimaryColor="rgb(79, 70, 229)"
+                  gaugeSecondaryColor="rgba(79, 70, 229, 0.2)"
+                />
+                <p className="mt-2 text-sm font-medium">Django Web Framework</p>
+              </div>
+            </BlurFade>
+            <BlurFade delay={BLUR_FADE_DELAY * 10.2}>
+              <div className="flex flex-col items-center">
+                <AnimatedCircularProgressBar
+                  min={0} // Added min prop
+                  max={100}
+                  value={80}
+                  gaugePrimaryColor="rgb(79, 70, 229)"
+                  gaugeSecondaryColor="rgba(79, 70, 229, 0.2)"
+                />
+                <p className="mt-2 text-sm font-medium">Django REST Framework</p>
+              </div>
+            </BlurFade>
+            <BlurFade delay={BLUR_FADE_DELAY * 10.3}>
+              <div className="flex flex-col items-center">
+                <AnimatedCircularProgressBar
+                  min={0} // Added min prop
+                  max={100}
+                  value={65}
+                  gaugePrimaryColor="rgb(79, 70, 229)"
+                  gaugeSecondaryColor="rgba(79, 70, 229, 0.2)"
+                />
+                <p className="mt-2 text-sm font-medium">SQL Database</p>
+              </div>
+            </BlurFade>
+            <BlurFade delay={BLUR_FADE_DELAY * 10.4}>
+              <div className="flex flex-col items-center">
+                <AnimatedCircularProgressBar
+                  min={0} // Added min prop
+                  max={100}
+                  value={85}
+                  gaugePrimaryColor="rgb(79, 70, 229)"
+                  gaugeSecondaryColor="rgba(79, 70, 229, 0.2)"
+                />
+                <p className="mt-2 text-sm font-medium">Web API</p>
+              </div>
+            </BlurFade>
+            <BlurFade delay={BLUR_FADE_DELAY * 10.5}>
+              <div className="flex flex-col items-center">
+                <AnimatedCircularProgressBar
+                  min={0} // Added min prop
+                  max={100}
+                  value={100}
+                  gaugePrimaryColor="rgb(79, 70, 229)"
+                  gaugeSecondaryColor="rgba(79, 70, 229, 0.2)"
+                />
+                <p className="mt-2 text-sm font-medium">Web</p>
+              </div>
+            </BlurFade>
           </div>
         </div>
       </section>
@@ -327,130 +363,109 @@ export default function Page() {
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
                 <div className="inline-block rounded-lg bg-foreground text-background px-3 py-1 text-sm">
-                  My Projects
+                  <AuroraText>My Projects</AuroraText>
                 </div>
-                <SparklesText className="text-2xl sm:text-3xl">Check out my latest work</SparklesText> {/* Adjusted size */}
+                <SparklesText className="text-2xl sm:text-3xl"><AuroraText>Check out my latest work</AuroraText></SparklesText>
               </div>
             </div>
           </BlurFade>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2 max-w-5xl mx-auto"> {/* Adjusted grid and max-width */}
-            {/* Project Cards - ensure imageUrls are passed correctly */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2 max-w-5xl mx-auto">
             <ProjectCard
               delay={BLUR_FADE_DELAY * 12}
-              title="Our First React Website"
-              description="Our first react project, FrontEnd: Freakless, BackEnd: Amirabbas (ixi_flower)"
-              tags={["React", "Vite", "JS"]}
-              link="#" // Consider adding actual links
-              linkText="View Details" // Example link text
-              imageUrls={[plastic1, plastic2]}
+              title="یوتوب"
+              description="A scalable video platform inspired by YouTube, built with Django and DRF, featuring video uploads, advanced search, user authentication, and a RESTful API. 📹🌐"
+              tags={["Django", "DRF", "Python", "REST API"]}
+              link="https://youtube-three-pearl.vercel.app"
+              linkText="View Project"
+              imageUrls={[]} // You can add images like [plastic1, plastic2] if desired
+              fullDescription={`
+**Period**: January 2024 - April 2024
+
+The <AuroraText>YouTube</AuroraText> project is a video platform developed using Django Rest Framework (DRF) and Django. Inspired by YouTube, it implements its core features. The goal is to create an online video management system with modern, scalable, and optimized features.
+
+**Key Features of the Project**:
+- **Video Upload and Management** 📹: Upload, categorize, and manage videos with support for various formats.
+- **Authentication and User Management** 🔒: Registration, login, user profile management, and access level control.
+- **Advanced Search and Filtering** 🔍: Search and filter videos by title, category, and publication date.
+- **Like, Dislike, and Comments System** 💬: User interaction with videos through likes, dislikes, and comments.
+- **Video Playback with Multiple Qualities** 🎥: Support for multiple playback qualities for a better user experience.
+- **DRF-Based API** 🌐: Provides a RESTful API for front-end and back-end communication.
+- **Optimization and Security** 🛡️: Uses JWT Authentication for session management, access control, and video protection.
+
+**Technologies Used**:
+- **Backend**: Django, Django Rest Framework (DRF), Celery, Redis
+- **Frontend**: React or Vue.js (if needed)
+- **Database**: PostgreSQL, MySQL
+- **Deployment**: Docker, Nginx, Gunicorn
+              `}
             />
             <ProjectCard
               delay={BLUR_FADE_DELAY * 12.05}
-              title="My nvim config (old)"
-              description="My previous Neovim configuration file. My new one is better 😁"
-              tags={["Neovim", "Lua"]}
+              title="مارکت شاپ"
+              description="A professional e-commerce platform built with Django and Python, featuring a scalable architecture, advanced authentication, fast search, and a modern responsive design. 🛒✨"
+              tags={["Django", "Python", "Jalali Date", "E-commerce"]}
               link="#"
-              linkText="View Config"
-              imageUrls={[nvim1, nvim2]}
-            />
-            <ProjectCard
-              delay={BLUR_FADE_DELAY * 12.1}
-              title="Python Telegram Bot Maker"
-              description="A tool to create Telegram bots with Python. Easy to use, just choose some options! 😎"
-              tags={["Python", "Telegram API", "OOP"]}
-              link="#"
-              linkText="See on GitHub"
-              imageUrls={[python3, python1, python2, python4]}
-            />
-            <ProjectCard
-              delay={BLUR_FADE_DELAY * 12.15}
-              title="React Ecommerce"
-              description="A full-featured ecommerce frontend concept."
-              tags={["React", "Tailwind CSS", "Vite", "Django"]}
-              link="#"
-              linkText="Explore Demo"
-              imageUrls={[eco1, eco2, eco3, eco4, eco5, eco6]}
-            />
-            <ProjectCard
-              delay={BLUR_FADE_DELAY * 12.20} // Adjusted delay slightly
-              title="ifi-Web"
-              description="Find anything on the internet (Youtube, Instagram, X, etc.). Frontend: Freakless, Backend: ixi_flower"
-              tags={["React", "Tailwind CSS", "TypeScript", "Vite", "Django"]}
-              link="#"
-              linkText="Visit Site"
-              imageUrls={[ifi_web]}
+              linkText="View Details"
+              imageUrls={[]} // You can add images like [eco1, eco2, eco3] if desired
+              fullDescription={`
+**Period**: September 2023 - November 2023
+
+This project was designed and implemented using Django as the main framework and Python as the programming language. 🐍
+
+**Key Features of the Project**:
+- **Scalable and Optimized Architecture** 🚀: Built for performance and growth.
+- **Advanced Authentication System** 🔒: Secure user login and access control.
+- **Fast Search and Data Filtering** 🔍: Quick and efficient product search.
+- **Modern and Responsive Design** 📱: Enhanced user experience across devices.
+- **Jalali Date Support** 📅: Tailored for regional user needs.
+
+Despite the extensive scope of the project, including:
+- **Product Categorization and Upload** 🛍️: Easy product management.
+- **Account Management and Registration** 👤: Seamless user onboarding.
+- **Fast Search and Navigation** ⚡: Quick access to products.
+- **Advanced Security and Access Management** 🛡️: Robust protection mechanisms.
+- And many other features 🌟
+
+All were developed in the best way using Django and various Python libraries to create a professional e-commerce website.
+              `}
             />
           </div>
         </div>
       </section>
 
-      {/* Hackathons Section */}
-      <section id="hackathons" className="w-full max-w-3xl mx-auto"> {/* Centered and max-width */}
-        <div className="space-y-12 w-full py-12 text-center"> {/* Centered text */}
-          <BlurFade delay={BLUR_FADE_DELAY * 13}>
-            <div className="flex flex-col items-center justify-center space-y-4">
-              <div className="space-y-2">
-                <div className="inline-block rounded-lg bg-foreground text-background px-3 py-1 text-sm">
-                  Hackathons & Training
-                </div>
-                <SparklesText className="text-2xl sm:text-3xl">Now what I’m doing?</SparklesText> {/* Adjusted size */}
-                <p className="text-muted-foreground text-sm sm:text-base md:text-lg/relaxed"> {/* Adjusted size and line height */}
-                  I’m currently sharpening my cybersecurity skills by attending a class at the{" "}
-                  <AuroraText className="font-semibold">OWASP Zero</AuroraText> course at{" "}
-                  <AuroraText className="font-semibold">voorivex Academy</AuroraText>, diving deep into web application
-                  security and vulnerability exploitation.
-                </p>
-              </div>
-            </div>
-          </BlurFade>
-        </div>
-      </section>
-
       {/* Contact Section */}
-      <section id="contact" className="contact-section w-full">
-        <div className="relative grid items-center justify-center gap-4 px-4 sm:px-6 lg:px-8 w-full py-12 sm:py-16 overflow-hidden"> {/* Increased padding */}
-          <AnimatedGridPattern
-            numSquares={30} // Increased density
-            maxOpacity={0.07} // Slightly more subtle
-            duration={4} // Slower animation
-            repeatDelay={1}
-            className="absolute inset-0 z-0 h-full w-full [--color-primary:var(--foreground)]" // Use theme color
-          />
+      <section id="contact">
+        <div className="grid items-center justify-center gap-4 px-4 text-center md:px-6 w-full py-12">
           <BlurFade delay={BLUR_FADE_DELAY * 16}>
-            <div className="relative z-10 space-y-4 text-center mx-auto"> {/* Increased spacing */}
-              <div className="inline-block rounded-lg bg-foreground text-background px-3 py-1 text-sm mx-auto">
-                Contact
+            <div className="space-y-3">
+              <div className="inline-block rounded-lg bg-foreground text-background px-3 py-1 text-sm">
+                <AuroraText>Contact</AuroraText>
               </div>
-              <h2 className="text-3xl sm:text-4xl font-bold tracking-tighter md:text-5xl"> {/* Adjusted sizes */}
-                Get in Touch
+              <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">
+                <AuroraText>Get in Touch</AuroraText>
               </h2>
-              <p className="mx-auto max-w-[90%] sm:max-w-[600px] text-muted-foreground text-sm sm:text-base md:text-lg"> {/* Adjusted sizes */}
-                Want to chat? Just shoot me a dm{" "}
-                <Link href={DATA.contact.social.X.url} className="text-primary hover:underline font-medium"> {/* Use primary theme color */}
-                  with a direct question on X (Twitter)
-                </Link>{" "}
-                or connect with me on my socials below. I will ignore all soliciting.
+              <p className="mx-auto max-w-[600px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed flex flex-wrap justify-center items-center gap-6">
+                <a
+                  href="mailto:salar_pr@outlook.com"
+                  className="inline-flex h-12 items-center justify-center rounded-xl bg-gradient-to-r from-red-500 to-orange-500 px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+                >
+                  Contact via Gmail 📧
+                </a>
+                <a
+                  href="https://t.me/salarrii"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-12 items-center justify-center rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                >
+                  Telegram: @salarrii 💬
+                </a>
+                <a
+                  href="tel:+989027142836"
+                  className="inline-flex h-12 items-center justify-center rounded-xl bg-gradient-to-r from-green-500 to-teal-500 px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400"
+                >
+                  Call: 09027142836 📞
+                </a>
               </p>
-            </div>
-            <div className="relative z-10 flex flex-wrap justify-center items-center gap-3 sm:gap-4 mt-8"> {/* Increased margin and gap */}
-              {Object.entries(DATA.contact.social).map(([name, socialLink], id) => (
-                 socialLink.url && ( // Check if URL exists
-                    <BlurFade key={name} delay={BLUR_FADE_DELAY * (17 + id * 0.1)}>
-                        <InteractiveHoverButton> {/* Consistent button size */}
-                        <a
-                            href={socialLink.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2 flex items-center gap-2" // Added flex for icon alignment
-                        >
-                            {/* Basic icon placeholder - replace with actual icons if available */}
-                            {socialLink.icon && <socialLink.icon className="h-4 w-4" />}
-                            {name}
-                        </a>
-                        </InteractiveHoverButton>
-                    </BlurFade>
-                 )
-              ))}
             </div>
           </BlurFade>
         </div>
@@ -458,4 +473,3 @@ export default function Page() {
     </main>
   );
 }
-
